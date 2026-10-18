@@ -45,6 +45,11 @@ export const collectDoctorDiagnostics = async (
   if (ilspyCheck !== undefined) checks.push(ilspyCheck);
   const hopperDemoCheck = await optionalHopperDemoCheck(host, hopperPath);
   if (hopperDemoCheck !== undefined) checks.push(hopperDemoCheck);
+  const hopperPythonCheck = await optionalHopperEmbeddedPythonCheck(
+    host,
+    hopperPath,
+  );
+  if (hopperPythonCheck !== undefined) checks.push(hopperPythonCheck);
   const targetCheck = await optionalTargetCheck(target, host);
   if (targetCheck !== undefined) checks.push(targetCheck);
 
@@ -142,7 +147,7 @@ const hostCheck = async (host: DoctorHost): Promise<DoctorCheck> => {
       : `${linuxDistribution.id} ${linuxDistribution.versionId ?? "unknown"}`);
   return check("host", supported, detail, {
     remediation:
-      "REA supports macOS 12+, Linux distributions with a recognized apt, dnf, or pacman package family, and the experimental Windows x64 Ghidra P0 boundary; automated Hopper setup additionally requires Ubuntu 24.04+, Fedora 41+, Nobara 44+, 64-bit Arch Linux, CachyOS, or Omarchy.",
+      "REA supports macOS 12+, Linux distributions with a recognized apt, dnf, or pacman package family, and the experimental Windows x64 Ghidra P0 boundary; automated Hopper setup additionally requires verified Ubuntu 24.04, Fedora 41+, Nobara 44+, 64-bit Arch Linux, CachyOS, or Omarchy.",
     classification: "unsupported_host",
   });
 };
@@ -246,6 +251,16 @@ const optionalHopperDemoCheck = async (
   host.platform !== "linux" || hopperPath === undefined
     ? undefined
     : host.linuxDemoRuntimeCheck();
+
+const optionalHopperEmbeddedPythonCheck = async (
+  host: DoctorHost,
+  hopperPath: string | undefined,
+): Promise<DoctorCheck | undefined> =>
+  host.platform !== "linux" ||
+  hopperPath === undefined ||
+  host.linuxEmbeddedPythonRuntimeCheck === undefined
+    ? undefined
+    : host.linuxEmbeddedPythonRuntimeCheck();
 
 const optionalIlspyCheck = async (
   host: DoctorHost,

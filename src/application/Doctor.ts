@@ -119,6 +119,7 @@ export interface DoctorHost {
     path: string,
   ): Promise<Result<VerifiedLinuxHopperLauncher, HopperReleaseError>>;
   linuxDemoRuntimeCheck(): Promise<DoctorCheck>;
+  linuxEmbeddedPythonRuntimeCheck?(): Promise<DoctorCheck>;
   brewHopperPath(): Promise<string | undefined>;
   manualHopperPaths(): Promise<readonly string[]>;
   providerInspections?(): Promise<readonly DoctorProviderInspection[]>;
@@ -487,6 +488,7 @@ export interface SystemDoctorHostOptions {
   >;
   readonly resolveProviderRequestBudget?: ProviderRequestBudgetResolver;
   readonly linuxDemoRuntimeCheck?: () => Promise<DoctorCheck>;
+  readonly linuxEmbeddedPythonRuntimeCheck?: () => Promise<DoctorCheck>;
 }
 
 /** Create diagnostics backed by the current process and host commands. */
@@ -578,6 +580,9 @@ export const systemDoctorHost = (
       ),
     linuxDemoRuntimeCheck:
       options.linuxDemoRuntimeCheck ?? uncomposedLinuxDemoRuntimeCheck,
+    linuxEmbeddedPythonRuntimeCheck:
+      options.linuxEmbeddedPythonRuntimeCheck ??
+      uncomposedLinuxEmbeddedPythonRuntimeCheck,
     inspectLinuxHopper: (path) => inspectLinuxHopperLauncher(path, environment),
     async brewHopperPath() {
       return probeHomebrew(async (command) => {
@@ -740,6 +745,15 @@ const uncomposedLinuxDemoRuntimeCheck = (): Promise<DoctorCheck> =>
     ok: false,
     classification: "config_drift",
     detail: "Linux Hopper private-display diagnostics were not composed",
+    remediation: "Run rea doctor through the production CLI adapter.",
+  });
+
+const uncomposedLinuxEmbeddedPythonRuntimeCheck = (): Promise<DoctorCheck> =>
+  Promise.resolve({
+    name: "hopper-embedded-python",
+    ok: false,
+    classification: "config_drift",
+    detail: "Linux Hopper embedded-Python diagnostics were not composed",
     remediation: "Run rea doctor through the production CLI adapter.",
   });
 

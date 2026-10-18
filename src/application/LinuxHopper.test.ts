@@ -7,6 +7,7 @@ import {
   formatCommandForDisplay,
   installLinuxHopper,
   linuxPackageManagerCommands,
+  linuxHopperEmbeddedPythonPackage,
   linuxSharedLibrariesAvailable,
   parseLinuxDistribution,
   supportsReaHost,
@@ -160,6 +161,15 @@ describe("Linux Hopper host classification", () => {
     },
   );
 
+  it("does not advertise an unverified Ubuntu 25.04 Hopper installer", () => {
+    expect(
+      parseLinuxDistribution('ID=ubuntu\nVERSION_ID="25.04"\n'),
+    ).toMatchObject({
+      packageFamily: "deb",
+      hopperSetupSupported: false,
+    });
+  });
+
   it("detects unresolved or loader-reported shared libraries", () => {
     expect(
       linuxSharedLibrariesAvailable(
@@ -219,7 +229,11 @@ describe("Linux Hopper host classification", () => {
 
 describe("Linux Hopper installation", () => {
   it.each([
-    ["deb", "apt-get", ["xvfb", "xauth", "python3", "libx11-6", "libxtst6"]],
+    [
+      "deb",
+      "apt-get",
+      ["xvfb", "xauth", "python3", "libpython3.12t64", "libx11-6", "libxtst6"],
+    ],
     [
       "rpm",
       "dnf",
@@ -227,6 +241,7 @@ describe("Linux Hopper installation", () => {
         "xorg-x11-server-Xvfb",
         "xorg-x11-xauth",
         "python3",
+        "python3.12-libs",
         "libX11",
         "libXtst",
       ],
@@ -240,7 +255,12 @@ describe("Linux Hopper installation", () => {
     "selects the %s native package manager and dependencies",
     (family, executable, packages) => {
       expect(
-        linuxPackageManagerCommands(family, "/tmp/Hopper package", true),
+        linuxPackageManagerCommands(
+          family,
+          "/tmp/Hopper package",
+          true,
+          family === "deb" ? "24.04" : "41",
+        ),
       ).toContainEqual(
         expect.objectContaining({
           executable,
@@ -248,7 +268,12 @@ describe("Linux Hopper installation", () => {
         }),
       );
       expect(
-        linuxPackageManagerCommands(family, "/tmp/Hopper package", false),
+        linuxPackageManagerCommands(
+          family,
+          "/tmp/Hopper package",
+          false,
+          family === "deb" ? "24.04" : "41",
+        ),
       ).toContainEqual(
         expect.objectContaining({
           executable: "pkexec",
@@ -257,6 +282,40 @@ describe("Linux Hopper installation", () => {
       );
     },
   );
+});
+
+it("only selects the verified Ubuntu 24.04 embedded runtime package", () => {
+  expect(
+    linuxHopperEmbeddedPythonPackage({
+      id: "ubuntu",
+      versionId: "24.04",
+      packageFamily: "deb",
+      hopperSetupSupported: true,
+    }),
+  ).toBe("libpython3.12t64");
+  expect(
+    linuxHopperEmbeddedPythonPackage({
+      id: "ubuntu",
+      versionId: "25.04",
+      packageFamily: "deb",
+      hopperSetupSupported: false,
+    }),
+  ).toBeUndefined();
+  expect(
+    linuxPackageManagerCommands("deb", "/tmp/Hopper package", true, "25.04"),
+  ).not.toContainEqual(
+    expect.objectContaining({
+      args: expect.arrayContaining(["libpython3.12t64"]),
+    }),
+  );
+  expect(
+    linuxHopperEmbeddedPythonPackage({
+      id: "fedora",
+      versionId: "41",
+      packageFamily: "rpm",
+      hopperSetupSupported: true,
+    }),
+  ).toBe("python3.12-libs");
 });
 
 describe("Linux Hopper package installation", () => {

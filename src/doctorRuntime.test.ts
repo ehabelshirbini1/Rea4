@@ -1,15 +1,73 @@
 import { chmod, mkdir, realpath, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { expect, it as test } from "vitest";
+import { expect, it as test, vi } from "vitest";
 
-import { createSystemDoctorHost } from "./doctorRuntime.js";
+import {
+  createSystemDoctorHost,
+  inspectLinuxEmbeddedPythonRuntime,
+} from "./doctorRuntime.js";
+import type { LinuxDistribution } from "./application/LinuxHopper.js";
 import { DOCTOR_PROVIDER_IDS } from "./application/DoctorProviderIds.js";
 import { providerRegistrationEnvironment } from "./application/SetupRegistrationEnvironment.js";
 import { createTestTempDirectory } from "../tests/fixtures/temporaryDirectory.js";
 import { writeJadxJarInventory } from "../tests/fixtures/android/jadxJar.js";
 
 const it = test.skipIf(process.platform === "win32");
+
+test("reports a missing Ubuntu 24.04 embedded Python runtime", async () => {
+  const distribution: LinuxDistribution = {
+    id: "ubuntu",
+    versionId: "24.04",
+    packageFamily: "deb",
+    hopperSetupSupported: true,
+  };
+  const run = vi.fn().mockResolvedValue({
+    stdout: "libc.so.6 (libc6,x86-64) => /lib/libc.so.6",
+    stderr: "",
+    stdoutBytes: 0,
+    stderrBytes: 0,
+  });
+  await expect(
+    inspectLinuxEmbeddedPythonRuntime(
+      {},
+      () => Promise.resolve(distribution),
+      run,
+    ),
+  ).resolves.toMatchObject({
+    name: "hopper-embedded-python",
+    ok: false,
+    classification: "missing_dependency",
+    remediation: expect.stringContaining("libpython3.12t64"),
+  });
+  expect(run).toHaveBeenCalledWith("ldconfig", ["-p"], { env: {} });
+});
+
+test("accepts a verified embedded Python runtime", async () => {
+  const distribution: LinuxDistribution = {
+    id: "fedora",
+    versionId: "41",
+    packageFamily: "rpm",
+    hopperSetupSupported: true,
+  };
+  await expect(
+    inspectLinuxEmbeddedPythonRuntime(
+      {},
+      () => Promise.resolve(distribution),
+      vi.fn().mockResolvedValue({
+        stdout:
+          "libpython3.12.so.1.0 (libc6,x86-64) => /lib64/libpython3.12.so.1.0",
+        stderr: "",
+        stdoutBytes: 0,
+        stderrBytes: 0,
+      }),
+    ),
+  ).resolves.toMatchObject({
+    name: "hopper-embedded-python",
+    ok: true,
+    classification: "healthy",
+  });
+});
 
 it("exposes jadx through the doctor provider selector", () => {
   expect(DOCTOR_PROVIDER_IDS).toContain("jadx");

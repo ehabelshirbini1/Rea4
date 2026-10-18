@@ -138,7 +138,7 @@ export const hostRemediation = async (
   }
   if ((await host.linuxDistribution())?.hopperSetupSupported === true)
     return undefined;
-  return "Automated Hopper setup supports Ubuntu 24.04+, Fedora 41+, Nobara 44+, 64-bit Arch Linux, CachyOS, and Omarchy; configure an existing supported provider instead.";
+  return "Automated Hopper setup supports verified Ubuntu 24.04, Fedora 41+, Nobara 44+, 64-bit Arch Linux, CachyOS, and Omarchy; configure an existing supported provider instead.";
 };
 
 /** Production setup effects for Hopper, agent configuration, and the canonical skill directory. */

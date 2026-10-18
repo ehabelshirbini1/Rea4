@@ -53,6 +53,7 @@ export class FakeSetupHost implements SetupHost {
   doctorHealthy: boolean | undefined;
   scopedDoctorHealthy: boolean | undefined;
   linuxDemoRuntimeMissing = false;
+  linuxEmbeddedPythonRuntimeMissing = false;
   unsupportedHopperVersion = false;
   hopperLauncherConfigured = false;
 
@@ -90,6 +91,7 @@ export class FakeSetupHost implements SetupHost {
     this.hopperInstalls += 1;
     this.hopperReplaceRequests.push(replaceExisting);
     this.linuxDemoRuntimeMissing = false;
+    this.linuxEmbeddedPythonRuntimeMissing = false;
     if (this.hopperInstallSucceeds) {
       this.hopper = "/manual/Hopper";
       return Promise.resolve({
@@ -172,6 +174,15 @@ export class FakeSetupHost implements SetupHost {
             },
           ] as const)
         : []),
+      ...(this.linuxEmbeddedPythonRuntimeMissing
+        ? ([
+            {
+              name: "hopper-embedded-python",
+              ok: false,
+              classification: "missing_dependency",
+            },
+          ] as const)
+        : []),
       ...(this.unsupportedHopperVersion
         ? ([
             {
@@ -187,6 +198,7 @@ export class FakeSetupHost implements SetupHost {
       this.doctorHealthy ??
       (this.hopper !== undefined &&
         !this.linuxDemoRuntimeMissing &&
+        !this.linuxEmbeddedPythonRuntimeMissing &&
         !this.unsupportedHopperVersion);
     const healthy =
       scope === undefined
